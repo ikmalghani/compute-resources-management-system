@@ -1,0 +1,3 @@
+ALTER TABLE "User" ADD COLUMN "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
+DROP INDEX IF EXISTS "User_email_key";
+ALTER TABLE "User" DROP COLUMN IF EXISTS "email";

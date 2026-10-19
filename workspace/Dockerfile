@@ -1,0 +1,17 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bash passwd sudo coreutils procps ca-certificates curl \
+  && printf '%s\n' '%sudo ALL=(ALL:ALL) NOPASSWD:ALL' > /etc/sudoers.d/myspace \
+  && chmod 440 /etc/sudoers.d/myspace \
+  && curl -fsSL -o /tmp/code-server.deb \
+    https://github.com/coder/code-server/releases/download/v4.104.1/code-server_4.104.1_amd64.deb \
+  && apt-get install -y /tmp/code-server.deb \
+  && rm -rf /tmp/code-server.deb /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/myspace-entrypoint
+COPY nvidia-smi-sim /usr/local/bin/nvidia-smi-sim
+RUN chmod 755 /usr/local/bin/myspace-entrypoint /usr/local/bin/nvidia-smi-sim
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/myspace-entrypoint"]

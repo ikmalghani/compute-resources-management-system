@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum WorkspaceStatus {
+  PROVISIONING
+  RUNNING
+  STOPPED
+  ERROR
+}
+
+enum GpuStatus {
+  FREE
+  BUSY
+}
+
+enum GpuMode {
+  NONE
+  NVIDIA
+  SIMULATED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  username           String        @unique
+  name               String
+  passwordHash       String
+  mustChangePassword Boolean       @default(false)
+  role               Role          @default(USER)
+  status             AccountStatus @default(ACTIVE)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  workspaces         Workspace[]
+  jobs               GpuJob[]
+  activity           ActivityLog[]
+}
+
+model Workspace {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  description   String
+  cpu           Float
+  memoryMb      Int
+  status        WorkspaceStatus @default(PROVISIONING)
+  containerId   String?
+  containerName String?
+  gpuMode       GpuMode         @default(NONE)
+  lastError     String?
+  ownerId       String?
+  owner         User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  gpuDeviceId   String?         @unique
+  gpuDevice     GpuDevice?      @relation(fields: [gpuDeviceId], references: [id], onDelete: SetNull)
+  jobs          GpuJob[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model GpuDevice {
+  id        String    @id @default(cuid())
+  index     Int       @unique
+  name      String
+  memoryMb  Int
+  status    GpuStatus @default(FREE)
+  createdAt DateTime  @default(now())
+  workspace Workspace?
+}
+
+model GpuJob {
+  id            String    @id @default(cuid())
+  title         String
+  command       String    @default("")
+  output        String    @default("")
+  status        JobStatus @default(QUEUED)
+  error         String?
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  gpuDeviceId   String?
+  requestedById String?
+  requestedBy   User?     @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([workspaceId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName   String
+  action      String
+  targetType  String
+  targetLabel String
+  detail      String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

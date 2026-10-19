@@ -1,0 +1,8 @@
+#!/bin/sh
+idx="${MYSPACE_GPU_INDEX:-unknown}"
+echo "GPU ${idx}: Myspace scheduler (simulated device ${idx})"
+echo "Status: allocated to this workspace"
+if [ -f /etc/myspace-gpu ]; then
+  echo "Reservation: $(cat /etc/myspace-gpu)"
+fi
+exit 0
