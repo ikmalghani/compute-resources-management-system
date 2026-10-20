@@ -1,0 +1,52 @@
+# Lean server deploy: images only, no source tree and no build context.
+# Copy this file and a .env to the host, then: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-myspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myspace}
+      POSTGRES_DB: ${POSTGRES_DB:-myspace}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  workspace-image:
+    image: ${CREMS_WORKSPACE_IMAGE:?Set CREMS_WORKSPACE_IMAGE in .env}
+    entrypoint: ["/bin/true"]
+    restart: "no"
+
+  app:
+    image: ${CREMS_APP_IMAGE:?Set CREMS_APP_IMAGE in .env}
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myspace}:${POSTGRES_PASSWORD:-myspace}@db:5432/${POSTGRES_DB:-myspace}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env}
+      WORKSPACE_IMAGE: ${CREMS_WORKSPACE_IMAGE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      db:
+        condition: service_healthy
+      workspace-image:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+volumes:
+  pgdata:

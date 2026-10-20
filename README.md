@@ -26,7 +26,9 @@ Later accounts are created in the dashboard. CReMS generates their password, sho
 
 ## Publish and deploy
 
-Build and push both images from a machine with Docker Hub access:
+The server does not need the source tree. Build and push from a machine that has this repository, then copy only `docker-compose.prod.yml` and `.env` to the host.
+
+On the build machine:
 
 ```bash
 cp .env.example .env
@@ -36,14 +38,24 @@ docker compose build
 docker compose push
 ```
 
-On the host, clone this repository, copy `.env.example` to `.env`, set the same image names and a new `AUTH_SECRET`, then pull and run without rebuilding:
+Copy the two files over SSH (Cloudflare tunnel is fine):
 
 ```bash
-docker compose pull
-docker compose up -d --no-build
+ssh your-server "mkdir -p ~/crems"
+scp docker-compose.prod.yml your-server:~/crems/docker-compose.yml
+scp .env.example your-server:~/crems/.env
 ```
 
-Open the app and create the administrator in the browser.
+On the server, edit `~/crems/.env`: set `AUTH_SECRET`, the same two image names, and a database password. Do not put an administrator password there.
+
+```bash
+cd ~/crems
+docker login
+docker compose pull
+docker compose up -d
+```
+
+Open the app and create the administrator in the browser. Later updates are `docker compose pull && docker compose up -d` on the server after you push new images.
 
 ## What people can do
 
