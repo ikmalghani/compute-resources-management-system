@@ -6,8 +6,8 @@ import "@fontsource/inter/700.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MYSPACE",
-  description: "Admin control plane for workspace containers, account access, and GPU scheduling.",
+  title: "CReMS - Compute Resources Management System",
+  description: "Compute Resources Management System",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

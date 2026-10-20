@@ -196,7 +196,7 @@ export default function UsersPage() {
       )}
 
       {creating ? (
-        <Modal title="Add account" subtitle="MYSPACE generates the password. It is shown once, then only a hash is stored." onClose={() => setCreating(false)}>
+        <Modal title="Add account" subtitle="CReMS generates the password. It is shown once, then only a hash is stored." onClose={() => setCreating(false)}>
           <form onSubmit={createUser}>
             <Field label="Full name"><input className={inputClass} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field>
             <Field label="Username"><input className={inputClass} value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} required placeholder="bob" /></Field>

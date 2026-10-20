@@ -8,14 +8,19 @@ function Base({ className, children }: IconProps & { children: React.ReactNode }
   );
 }
 
-export function LogoMark() {
+export function LogoMark({ className = "h-10 w-10" }: { className?: string }) {
+  return <img src="/crems-logo.png" alt="CReMS" className={`object-contain ${className}`} />;
+}
+
+export function BrandLockup({ subtitle = "Compute Resources Management System" }: { subtitle?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className="h-10 w-10" aria-hidden="true">
-      <circle cx="16" cy="16" r="16" fill="#123f45" />
-      <rect x="8" y="9" width="16" height="11" rx="2.5" fill="#00968a" />
-      <path d="M11 23h10" stroke="#b8fff2" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="16" cy="14.5" r="2" fill="#f3fffc" />
-    </svg>
+    <div className="mb-6 flex items-center gap-3">
+      <LogoMark className="h-14 w-14" />
+      <div>
+        <p className="text-lg font-semibold text-[#17181c]">CReMS</p>
+        <p className="text-sm text-[#8b9098]">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 
@@ -66,6 +71,16 @@ export const SearchIcon = (props: IconProps) => (
   <Base {...props}>
     <circle cx="11" cy="11" r="6.5" />
     <path d="m16 16 4 4" />
+  </Base>
+);
+
+export const ScanIcon = (props: IconProps) => (
+  <Base {...props}>
+    <circle cx="12" cy="12" r="2.2" />
+    <path d="M8.2 8.2a5.4 5.4 0 0 1 7.6 0" />
+    <path d="M5.6 5.6a9 9 0 0 1 12.8 0" />
+    <path d="M15.8 15.8a5.4 5.4 0 0 1-7.6 0" />
+    <path d="M18.4 18.4a9 9 0 0 1-12.8 0" />
   </Base>
 );
 

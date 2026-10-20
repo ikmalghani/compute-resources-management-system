@@ -13,6 +13,12 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter a password"),
 });
 
+export const setupAdminSchema = z.object({
+  name: z.string().trim().min(2, "Name is too short").max(80),
+  username,
+  password,
+});
+
 export const createUserSchema = z.object({
   name: z.string().trim().min(2, "Name is too short").max(80),
   username,
@@ -50,10 +56,17 @@ export const execSchema = z.object({
   command: z.string().trim().min(1, "Enter a command").max(2000),
 });
 
-export const gpuDeviceSchema = z.object({
-  name: z.string().trim().min(2).max(60),
-  memoryMb: z.number().int().min(256).max(262144),
-  index: z.number().int().min(0).max(32).optional(),
+export const addGpusSchema = z.object({
+  gpus: z
+    .array(
+      z.object({
+        name: z.string().trim().min(2).max(80),
+        memoryMb: z.number().int().min(256).max(262144),
+        index: z.number().int().min(0).max(32),
+      }),
+    )
+    .min(1, "Select at least one GPU")
+    .max(32),
 });
 
 export const powerSchema = z.object({

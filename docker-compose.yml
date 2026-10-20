@@ -2,32 +2,34 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: myspace
-      POSTGRES_PASSWORD: myspace
-      POSTGRES_DB: myspace
+      POSTGRES_USER: ${POSTGRES_USER:-myspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myspace}
+      POSTGRES_DB: ${POSTGRES_DB:-myspace}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myspace -d myspace"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
 
   workspace-image:
-    image: myspace-workspace:latest
+    image: ${CREMS_WORKSPACE_IMAGE:-crems-workspace:latest}
     build: ./workspace
     entrypoint: ["/bin/true"]
     restart: "no"
 
   app:
+    image: ${CREMS_APP_IMAGE:-crems:local}
     build: .
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://myspace:myspace@db:5432/myspace?schema=public
-      AUTH_SECRET: myspace-dev-auth-secret-change-before-sharing
+      DATABASE_URL: postgresql://${POSTGRES_USER:-myspace}:${POSTGRES_PASSWORD:-myspace}@db:5432/${POSTGRES_DB:-myspace}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-crems-dev-auth-secret-change-before-sharing}
+      WORKSPACE_IMAGE: ${CREMS_WORKSPACE_IMAGE:-crems-workspace:latest}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:

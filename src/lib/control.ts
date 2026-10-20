@@ -2,6 +2,7 @@ import type { GpuDevice, GpuJob, Workspace } from "@prisma/client";
 import { logActivity } from "@/lib/activity";
 import { prisma } from "@/lib/db";
 import {
+  detectNvidiaGpus,
   execCommand,
   inspectLimits,
   provisionContainer,
@@ -240,7 +241,7 @@ async function releaseFlaggedLocked() {
     try {
       const probe = await execCommand(
         ws.containerId,
-        "if [ -f /tmp/myspace-release-gpu ]; then rm -f /tmp/myspace-release-gpu; echo yes; fi",
+        "if [ -f /tmp/crems-release-gpu ]; then rm -f /tmp/crems-release-gpu; echo yes; fi",
         "root",
         4000,
         "/",
@@ -851,30 +852,45 @@ export async function requestGpu(actor: Actor, workspaceId: string) {
   return { state };
 }
 
-export async function addGpuDevice(actor: Actor, input: { name: string; memoryMb: number; index?: number }) {
+export async function scanHostGpus(actor: Actor) {
+  adminOnly(actor);
+  const found = await detectNvidiaGpus();
+  const registered = await prisma.gpuDevice.findMany({ select: { index: true } });
+  const inPool = new Set(registered.map((device) => device.index));
+  return found.map((gpu) => ({
+    index: gpu.index,
+    name: gpu.name,
+    memoryMb: gpu.memoryMb,
+    inPool: inPool.has(gpu.index),
+  }));
+}
+
+export async function addGpuDevices(actor: Actor, gpus: { name: string; memoryMb: number; index: number }[]) {
   adminOnly(actor);
   let kicks: string[] = [];
-  const device = await withLock(async () => {
-    const max = await prisma.gpuDevice.aggregate({ _max: { index: true } });
-    const index = input.index ?? (max._max.index ?? -1) + 1;
-    const taken = await prisma.gpuDevice.findUnique({ where: { index } });
-    if (taken) throw new HttpError(409, `GPU index ${index} is already registered`);
-    const created = await prisma.gpuDevice.create({
-      data: { index, name: input.name.trim(), memoryMb: input.memoryMb, status: "FREE" },
-    });
-    await logActivity({
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "gpu.added",
-      targetType: "gpu",
-      targetLabel: created.name,
-      detail: `Registered GPU ${created.index} (${created.memoryMb} MB) in the scheduler pool.`,
-    });
+  const created = await withLock(async () => {
+    const devices = [];
+    for (const gpu of gpus) {
+      const taken = await prisma.gpuDevice.findUnique({ where: { index: gpu.index } });
+      if (taken) throw new HttpError(409, `GPU index ${gpu.index} is already registered`);
+      const device = await prisma.gpuDevice.create({
+        data: { index: gpu.index, name: gpu.name.trim(), memoryMb: gpu.memoryMb, status: "FREE" },
+      });
+      devices.push(device);
+      await logActivity({
+        actorId: actor.id,
+        actorName: actor.name,
+        action: "gpu.added",
+        targetType: "gpu",
+        targetLabel: device.name,
+        detail: `Registered GPU ${device.index} (${device.memoryMb} MB) in the scheduler pool.`,
+      });
+    }
     kicks = await dispatchLocked();
-    return created;
+    return devices;
   });
   launch(kicks);
-  return device;
+  return created;
 }
 
 export async function removeGpuDevice(actor: Actor, id: string) {

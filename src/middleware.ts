@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(session.mcp ? PASSWORD_PATH : "/dashboard", request.url));
   }
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/setup") {
     if (!session) return NextResponse.next();
     return NextResponse.redirect(new URL(session.mcp ? PASSWORD_PATH : "/dashboard", request.url));
   }
@@ -55,6 +55,7 @@ export const config = {
   matcher: [
     "/",
     "/login",
+    "/setup",
     "/dashboard",
     "/dashboard/:path*",
     "/workspaces",

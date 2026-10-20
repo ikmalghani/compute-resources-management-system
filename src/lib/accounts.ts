@@ -2,11 +2,48 @@ import bcrypt from "bcryptjs";
 import { logActivity } from "@/lib/activity";
 import { prisma } from "@/lib/db";
 import { HttpError, isUniqueConflict } from "@/lib/errors";
+import { withLock } from "@/lib/lock";
 import { generatePassword } from "@/lib/passwords";
 import type { Actor } from "@/lib/queries";
 
 function adminOnly(actor: Actor) {
   if (actor.role !== "ADMIN") throw new HttpError(403, "Only an administrator can do that");
+}
+
+export async function needsSetup() {
+  return (await prisma.user.count({ where: { role: "ADMIN" } })) === 0;
+}
+
+export async function bootstrapAdministrator(input: { name: string; username: string; password: string }) {
+  return withLock(async () => {
+    if (!(await needsSetup())) {
+      throw new HttpError(409, "This instance already has an administrator");
+    }
+    try {
+      const user = await prisma.user.create({
+        data: {
+          name: input.name,
+          username: input.username,
+          passwordHash: await bcrypt.hash(input.password, 10),
+          mustChangePassword: false,
+          role: "ADMIN",
+          status: "ACTIVE",
+        },
+      });
+      await logActivity({
+        actorId: user.id,
+        actorName: user.name,
+        action: "user.bootstrapped",
+        targetType: "user",
+        targetLabel: user.username,
+        detail: `${user.username} created the first administrator account.`,
+      });
+      return user;
+    } catch (error) {
+      if (isUniqueConflict(error)) throw new HttpError(409, "An account with that username already exists");
+      throw error;
+    }
+  });
 }
 
 async function assertAdminRemains(user: { id: string; role: string; status: string }, next: { role?: string; status?: string }) {

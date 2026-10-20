@@ -1,8 +1,8 @@
 #!/bin/sh
-idx="${MYSPACE_GPU_INDEX:-unknown}"
-echo "GPU ${idx}: Myspace scheduler (simulated device ${idx})"
+idx="${CREMS_GPU_INDEX:-unknown}"
+echo "GPU ${idx}: CReMS scheduler (simulated device ${idx})"
 echo "Status: allocated to this workspace"
-if [ -f /etc/myspace-gpu ]; then
-  echo "Reservation: $(cat /etc/myspace-gpu)"
+if [ -f /etc/crems-gpu ]; then
+  echo "Reservation: $(cat /etc/crems-gpu)"
 fi
 exit 0

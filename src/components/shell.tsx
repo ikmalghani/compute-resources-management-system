@@ -81,9 +81,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#c9cfd4] p-3 sm:p-4">
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] overflow-hidden rounded-[28px] bg-white shadow-panel sm:min-h-[calc(100vh-2rem)]">
         <aside className="hidden w-[248px] shrink-0 flex-col bg-[#0f172b] text-white md:flex">
-          <div className="flex items-center gap-3 px-5 pb-6 pt-6">
-            <LogoMark />
-            <span className="text-[15px] font-semibold tracking-tight">MYSPACE</span>
+          <div className="flex items-center gap-3 px-4 pb-6 pt-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white">
+              <LogoMark className="h-11 w-11" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-semibold tracking-tight">CReMS</span>
+              <span className="block text-[10px] leading-tight text-[#9aa3b5]">Compute Resources Management System</span>
+            </span>
           </div>
           <nav className="flex flex-1 flex-col gap-1 px-3">
             {items.map((item) => {

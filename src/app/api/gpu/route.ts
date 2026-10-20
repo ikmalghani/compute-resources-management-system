@@ -1,10 +1,10 @@
 import { requireAdmin, requireReadyUser } from "@/lib/auth";
-import { addGpuDevice } from "@/lib/control";
+import { addGpuDevices } from "@/lib/control";
 import { prisma } from "@/lib/db";
 import { toGpu, toJob, withQueuePositions } from "@/lib/dto";
 import { handle, ok, readJson } from "@/lib/http";
 import { jobInclude } from "@/lib/queries";
-import { gpuDeviceSchema } from "@/lib/validators";
+import { addGpusSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +33,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const actor = await requireAdmin();
-    const input = gpuDeviceSchema.parse(await readJson(request));
-    const device = await addGpuDevice(actor, input);
-    const full = await prisma.gpuDevice.findUniqueOrThrow({ where: { id: device.id }, include: { workspace: true } });
-    return ok({ gpu: toGpu(full) }, 201);
+    const input = addGpusSchema.parse(await readJson(request));
+    const created = await addGpuDevices(actor, input.gpus);
+    const full = await prisma.gpuDevice.findMany({
+      where: { id: { in: created.map((device) => device.id) } },
+      include: { workspace: true },
+      orderBy: { index: "asc" },
+    });
+    return ok({ gpus: full.map(toGpu) }, 201);
   } catch (error) {
     return handle(error);
   }

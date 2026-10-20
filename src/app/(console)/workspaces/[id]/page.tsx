@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { FileBrowser } from "@/components/file-browser";
 import { Banner, DangerButton, Field, Modal, PrimaryButton, SecondaryButton, inputClass } from "@/components/ui";
 import { api } from "@/lib/client";
+import { gbToMb, mbToGb } from "@/lib/format";
 
 type Workspace = {
   id: string;
@@ -39,7 +40,7 @@ export default function WorkspaceDetailPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", ownerId: "", cpu: 1, memoryMb: 2048 });
+  const [form, setForm] = useState({ name: "", description: "", ownerId: "", cpu: 1, memoryGb: 2 });
 
   async function load() {
     const [session, detail] = await Promise.all([
@@ -53,7 +54,7 @@ export default function WorkspaceDetailPage() {
       description: detail.workspace.description,
       ownerId: detail.workspace.owner?.id || "",
       cpu: detail.workspace.cpu,
-      memoryMb: detail.workspace.memoryMb,
+      memoryGb: mbToGb(detail.workspace.memoryMb),
     });
     if (session.user.role === "ADMIN") {
       const people = await api<{ users: UserOption[] }>("/api/users");
@@ -95,7 +96,7 @@ export default function WorkspaceDetailPage() {
           description: form.description,
           ownerId: form.ownerId,
           cpu: Number(form.cpu),
-          memoryMb: Number(form.memoryMb),
+          memoryMb: gbToMb(Number(form.memoryGb)),
         }),
       });
       setEditing(false);
@@ -225,8 +226,8 @@ export default function WorkspaceDetailPage() {
               <Field label="CPUs">
                 <input className={inputClass} type="number" min={0.25} max={32} step={0.25} value={form.cpu} onChange={(event) => setForm({ ...form, cpu: Number(event.target.value) })} />
               </Field>
-              <Field label="RAM (MB)">
-                <input className={inputClass} type="number" min={256} max={65536} step={256} value={form.memoryMb} onChange={(event) => setForm({ ...form, memoryMb: Number(event.target.value) })} />
+              <Field label="RAM (GB)">
+                <input className={inputClass} type="number" min={0.25} max={64} step={0.25} value={form.memoryGb} onChange={(event) => setForm({ ...form, memoryGb: Number(event.target.value) })} />
               </Field>
             </div>
             <div className="flex justify-end gap-2">

@@ -8,7 +8,7 @@ if ! [[ "$USER_NAME" =~ ^[a-z][a-z0-9]{1,31}$ ]]; then
   echo "invalid workspace user" >&2
   exit 1
 fi
-if ! [[ "$PROMPT_HOST" =~ ^myspace-[a-z0-9][a-z0-9-]{0,48}$ ]]; then
+if ! [[ "$PROMPT_HOST" =~ ^crems-[a-z0-9][a-z0-9-]{0,48}$ ]]; then
   echo "invalid prompt host" >&2
   exit 1
 fi
@@ -38,60 +38,63 @@ touch "$BASHRC"
 if grep -q '# MYSPACE START' "$BASHRC"; then
   sed -i '/# MYSPACE START/,/# MYSPACE END/d' "$BASHRC"
 fi
+if grep -q '# CREMS START' "$BASHRC"; then
+  sed -i '/# CREMS START/,/# CREMS END/d' "$BASHRC"
+fi
 cat >> "$BASHRC" << EOF
-# MYSPACE START
+# CREMS START
 export PS1='${USER_NAME}@${PROMPT_HOST}~:\$ '
 cd ~
-_myspace_needs_gpu() {
+_crems_needs_gpu() {
   printf '%s\n' "\$1" | grep -Eiq '(^|[^[:alnum:]_])(nvidia-smi|nvcc|nvtop|gpustat|rocm-smi|cuda-gdb|nsys|ncu|ollama|vllm|pycuda|cupy)([^[:alnum:]_]|\$)|(^|[^[:alnum:]_])cuda([^[:alnum:]_]|\$)|torch|tensorflow|CUDA_VISIBLE_DEVICES|--gpus'
 }
-_myspace_hook() {
+_crems_hook() {
   local cmd="\$1"
-  if _myspace_needs_gpu "\$cmd"; then
-    if [ ! -f /etc/myspace-gpu ]; then
+  if _crems_needs_gpu "\$cmd"; then
+    if [ ! -f /etc/crems-gpu ]; then
       printf '%s\n' "This operation needs a GPU. Please request one."
       return 1
     fi
-    : > /tmp/myspace-gpu-command
+    : > /tmp/crems-gpu-command
   fi
   return 0
 }
-_myspace_after() {
-  [ -f /tmp/myspace-gpu-command ] || return 0
-  rm -f /tmp/myspace-gpu-command
-  : > /tmp/myspace-release-gpu
+_crems_after() {
+  [ -f /tmp/crems-gpu-command ] || return 0
+  rm -f /tmp/crems-gpu-command
+  : > /tmp/crems-release-gpu
 }
 case \$- in
   *i*)
     shopt -s extdebug
-    trap '_myspace_hook "\$BASH_COMMAND"' DEBUG
-    PROMPT_COMMAND=_myspace_after
+    trap '_crems_hook "\$BASH_COMMAND"' DEBUG
+    PROMPT_COMMAND=_crems_after
     ;;
 esac
-# MYSPACE END
+# CREMS END
 EOF
 
 if [ ! -f "/home/${USER_NAME}/.bash_profile" ]; then
   printf '%s\n' '. ~/.bashrc' > "/home/${USER_NAME}/.bash_profile"
 fi
 
-cat > /etc/profile.d/myspace-prompt.sh << EOF
+cat > /etc/profile.d/crems-prompt.sh << EOF
 export PS1='${USER_NAME}@${PROMPT_HOST}~:\$ '
 EOF
 
-if [ "${MYSPACE_GPU_MODE:-}" = "simulated" ]; then
-  printf '%s\n' "${MYSPACE_GPU_INDEX}" > /etc/myspace-gpu
+if [ "${CREMS_GPU_MODE:-}" = "simulated" ]; then
+  printf '%s\n' "${CREMS_GPU_INDEX}" > /etc/crems-gpu
   ln -sfn /usr/local/bin/nvidia-smi-sim /usr/local/bin/nvidia-smi
-elif [ "${MYSPACE_GPU_MODE:-}" = "nvidia" ]; then
-  printf '%s\n' "${MYSPACE_GPU_INDEX}" > /etc/myspace-gpu
+elif [ "${CREMS_GPU_MODE:-}" = "nvidia" ]; then
+  printf '%s\n' "${CREMS_GPU_INDEX}" > /etc/crems-gpu
   rm -f /usr/local/bin/nvidia-smi
 else
-  rm -f /etc/myspace-gpu /usr/local/bin/nvidia-smi
+  rm -f /etc/crems-gpu /usr/local/bin/nvidia-smi
 fi
 
 chown -R "${USER_NAME}:${USER_NAME}" "/home/${USER_NAME}"
 
-if command -v code-server >/dev/null 2>&1 && [ -n "${MYSPACE_WORKSPACE_ID:-}" ]; then
+if command -v code-server >/dev/null 2>&1 && [ -n "${CREMS_WORKSPACE_ID:-}" ]; then
   runuser -u "$USER_NAME" -- code-server \
     --bind-addr 0.0.0.0:8080 \
     --auth none \

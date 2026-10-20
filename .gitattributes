@@ -1,0 +1,2 @@
+*.sh text eol=lf
+workspace/nvidia-smi-sim text eol=lf

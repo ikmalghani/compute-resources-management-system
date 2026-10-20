@@ -4,17 +4,17 @@ export function slugify(name: string) {
 }
 
 export function shellPrompt(username: string, slug: string) {
-  return `${username}@myspace-${slug}~:$`;
+  return `${username}@crems-${slug}~:$`;
 }
 
 export function containerName(slug: string) {
-  return `myspace-ws-${slug}`;
+  return `crems-ws-${slug}`;
 }
 
 export function volumeName(slug: string) {
-  return `myspace-vol-${slug}`;
+  return `crems-vol-${slug}`;
 }
 
 export function promptHost(slug: string) {
-  return `myspace-${slug}`;
+  return `crems-${slug}`;
 }

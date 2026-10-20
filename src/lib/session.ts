@@ -1,9 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 
-export const SESSION_COOKIE = "myspace_session";
+export const SESSION_COOKIE = "crems_session";
 
 export function authSecret() {
-  const value = process.env.AUTH_SECRET || "dev-only-myspace-auth-secret-change";
+  const value = process.env.AUTH_SECRET || "dev-only-crems-auth-secret-change";
   return new TextEncoder().encode(value);
 }
 

@@ -301,7 +301,7 @@ export async function writeWorkspaceFile(actor: Actor, workspaceId: string, rawP
     `${place(located.home, parent, name)}
 if [ -L "$dest" ]; then printf '%s\\n' SYMLINK; exit 0; fi
 if [ -d "$dest" ]; then printf '%s\\n' ISDIR; exit 0; fi
-tmp=$(mktemp "$parent/.myspace.XXXXXX") || { printf '%s\\n' FAIL; exit 0; }
+tmp=$(mktemp "$parent/.crems.XXXXXX") || { printf '%s\\n' FAIL; exit 0; }
 cat > "$tmp" || { rm -f -- "$tmp"; printf '%s\\n' FAIL; exit 0; }
 mv -f -- "$tmp" "$dest"
 size=$(wc -c < "$dest" | tr -d ' ')
@@ -331,7 +331,7 @@ export async function uploadWorkspaceFile(
     `${place(located.home, parent, name)}
 if [ -L "$dest" ]; then printf '%s\\n' SYMLINK; exit 0; fi
 if [ -d "$dest" ]; then printf '%s\\n' ISDIR; exit 0; fi
-tmp=$(mktemp "$parent/.myspace.XXXXXX") || { printf '%s\\n' FAIL; exit 0; }
+tmp=$(mktemp "$parent/.crems.XXXXXX") || { printf '%s\\n' FAIL; exit 0; }
 cat > "$tmp" || { rm -f -- "$tmp"; printf '%s\\n' FAIL; exit 0; }
 mv -f -- "$tmp" "$dest"
 size=$(wc -c < "$dest" | tr -d ' ')

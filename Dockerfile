@@ -11,7 +11,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npx prisma generate && npm run build
+RUN sed -i 's/\r$//' /app/docker/start.sh \
+  && npx prisma generate && npm run build
 
 EXPOSE 3000
 CMD ["sh", "/app/docker/start.sh"]

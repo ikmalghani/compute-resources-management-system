@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { GpuIcon, PlusIcon } from "@/components/icons";
+import { GpuIcon, PlusIcon, ScanIcon } from "@/components/icons";
 import { Banner, DangerButton, EmptyState, Field, FilterBar, Modal, PageHeader, PrimaryButton, SecondaryButton, inputClass } from "@/components/ui";
 import { api } from "@/lib/client";
 import { formatRam, formatWhen } from "@/lib/format";
@@ -28,6 +28,7 @@ type Job = {
 };
 type Workspace = { id: string; name: string; status: string };
 type Me = { role: "ADMIN" | "USER" };
+type ScannedGpu = { index: number; name: string; memoryMb: number; inPool: boolean };
 
 const filters = [
   { id: "active", label: "Active" },
@@ -47,9 +48,11 @@ export default function SchedulerPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [jobOpen, setJobOpen] = useState(false);
-  const [gpuOpen, setGpuOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState<ScannedGpu[]>([]);
+  const [selected, setSelected] = useState<number[]>([]);
   const [jobForm, setJobForm] = useState({ workspaceId: "", title: "", command: "nvidia-smi" });
-  const [gpuForm, setGpuForm] = useState({ name: "", memoryMb: 16384, index: "" });
 
   async function load() {
     const [session, pool, spaces] = await Promise.all([
@@ -115,25 +118,50 @@ export default function SchedulerPage() {
     }
   }
 
-  async function addGpu(event: React.FormEvent) {
+  async function scanGpus() {
+    setScanOpen(true);
+    setScanning(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await api<{ gpus: ScannedGpu[] }>("/api/gpu/scan");
+      setScanned(result.gpus);
+      setSelected(result.gpus.filter((gpu) => !gpu.inPool).map((gpu) => gpu.index));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not scan for GPUs");
+      setScanned([]);
+      setSelected([]);
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  function toggleGpu(index: number, inPool: boolean) {
+    if (inPool) return;
+    setSelected((current) => (current.includes(index) ? current.filter((value) => value !== index) : [...current, index]));
+  }
+
+  async function addSelected(event: React.FormEvent) {
     event.preventDefault();
+    const gpus = scanned.filter((gpu) => !gpu.inPool && selected.includes(gpu.index));
+    if (gpus.length === 0) {
+      setError("Select at least one GPU that is not already in the pool");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await api("/api/gpu", {
         method: "POST",
         body: JSON.stringify({
-          name: gpuForm.name,
-          memoryMb: Number(gpuForm.memoryMb),
-          index: gpuForm.index === "" ? undefined : Number(gpuForm.index),
+          gpus: gpus.map((gpu) => ({ index: gpu.index, name: gpu.name, memoryMb: gpu.memoryMb })),
         }),
       });
-      setGpuOpen(false);
-      setGpuForm({ name: "", memoryMb: 16384, index: "" });
-      setMessage("GPU added to the pool.");
+      setScanOpen(false);
+      setMessage(gpus.length === 1 ? "GPU added to the pool." : `${gpus.length} GPUs added to the pool.`);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the GPU");
+      setError(err instanceof Error ? err.message : "Could not add the selected GPUs");
     } finally {
       setBusy(false);
     }
@@ -159,9 +187,9 @@ export default function SchedulerPage() {
         action={
           <div className="flex gap-2">
             {me?.role === "ADMIN" ? (
-              <SecondaryButton onClick={() => setGpuOpen(true)}>
-                <PlusIcon className="h-4 w-4" />
-                Add GPU
+              <SecondaryButton disabled={scanning} onClick={() => void scanGpus()}>
+                <ScanIcon className="h-4 w-4" />
+                {scanning ? "Scanning..." : "Scan available GPUs"}
               </SecondaryButton>
             ) : null}
             <PrimaryButton onClick={() => setJobOpen(true)}>
@@ -173,9 +201,21 @@ export default function SchedulerPage() {
       />
       {message ? <Banner tone="ok">{message}</Banner> : null}
       {error ? <Banner tone="error">{error}</Banner> : null}
-      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {gpus.map((gpu) => (
-          <article key={gpu.id} className="rounded-2xl border border-[#e6e8ee] bg-white p-5 shadow-card">
+      {gpus.length === 0 ? (
+        <div className="mb-5">
+          <EmptyState
+            title="No GPUs in the pool"
+            body={
+              me?.role === "ADMIN"
+                ? "Scan the host for NVIDIA GPUs, then choose which ones to add to the scheduler."
+                : "An administrator has not added a GPU to the scheduler yet."
+            }
+          />
+        </div>
+      ) : (
+        <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {gpus.map((gpu) => (
+            <article key={gpu.id} className="rounded-2xl border border-[#e6e8ee] bg-white p-5 shadow-card">
             <div className="flex items-start justify-between">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e7f6f4] text-[#00968a]">
                 <GpuIcon className="h-5 w-5" />
@@ -197,9 +237,10 @@ export default function SchedulerPage() {
                 Remove from pool
               </button>
             ) : null}
-          </article>
-        ))}
-      </div>
+            </article>
+          ))}
+        </div>
+      )}
       <FilterBar query={query} onQuery={setQuery} placeholder="Search jobs..." filters={filters} active={filter} onFilter={setFilter} />
       {visible.length === 0 ? (
         <EmptyState title="Queue is clear" body="Submit a job when a workspace needs a GPU. If every GPU is busy, the job waits until one is freed." />
@@ -253,19 +294,66 @@ export default function SchedulerPage() {
         </Modal>
       ) : null}
 
-      {gpuOpen ? (
-        <Modal title="Add GPU" subtitle="The index maps to the NVIDIA device id when the container runtime is available." onClose={() => setGpuOpen(false)}>
-          <form onSubmit={addGpu}>
-            <Field label="Name"><input className={inputClass} value={gpuForm.name} onChange={(event) => setGpuForm({ ...gpuForm, name: event.target.value })} required placeholder="GPU 2" /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Memory (MB)"><input className={inputClass} type="number" min={256} value={gpuForm.memoryMb} onChange={(event) => setGpuForm({ ...gpuForm, memoryMb: Number(event.target.value) })} /></Field>
-              <Field label="Index"><input className={inputClass} value={gpuForm.index} onChange={(event) => setGpuForm({ ...gpuForm, index: event.target.value })} placeholder="Auto" /></Field>
+      {scanOpen ? (
+        <Modal
+          title="Available GPUs"
+          subtitle="Devices reported by nvidia-smi on this host. Choose which ones to add to the scheduler."
+          onClose={() => setScanOpen(false)}
+        >
+          {scanning ? (
+            <p className="py-6 text-center text-sm text-[#8b9098]">Scanning the host for NVIDIA GPUs...</p>
+          ) : scanned.length === 0 ? (
+            <div>
+              <p className="py-6 text-center text-sm text-[#8b9098]">
+                No NVIDIA GPUs were found. The NVIDIA container runtime may be missing, or this host has no GPU.
+              </p>
+              <div className="flex justify-end">
+                <SecondaryButton type="button" onClick={() => void scanGpus()} disabled={scanning}>
+                  Scan again
+                </SecondaryButton>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <SecondaryButton type="button" onClick={() => setGpuOpen(false)}>Cancel</SecondaryButton>
-              <PrimaryButton disabled={busy} type="submit">Add GPU</PrimaryButton>
-            </div>
-          </form>
+          ) : (
+            <form onSubmit={addSelected}>
+              <ul className="mb-4 max-h-80 space-y-2 overflow-auto">
+                {scanned.map((gpu) => {
+                  const checked = gpu.inPool || selected.includes(gpu.index);
+                  return (
+                    <li key={gpu.index}>
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 ${
+                          gpu.inPool ? "cursor-default border-[#eceef2] bg-[#f7f8fa]" : checked ? "border-[#00968a] bg-[#f0fbf8]" : "border-[#e6e8ee] bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={checked}
+                          disabled={gpu.inPool}
+                          onChange={() => toggleGpu(gpu.index, gpu.inPool)}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-[#17181c]">{gpu.name}</span>
+                          <span className="mt-1 block text-xs text-[#8b9098]">
+                            Index {gpu.index} · {formatRam(gpu.memoryMb)}
+                            {gpu.inPool ? " · already in the pool" : ""}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="flex justify-end gap-2">
+                <SecondaryButton type="button" onClick={() => void scanGpus()} disabled={scanning || busy}>
+                  Scan again
+                </SecondaryButton>
+                <PrimaryButton disabled={busy || selected.length === 0} type="submit">
+                  {busy ? "Adding..." : selected.length <= 1 ? "Add selected GPU" : `Add ${selected.length} GPUs`}
+                </PrimaryButton>
+              </div>
+            </form>
+          )}
         </Modal>
       ) : null}
     </div>

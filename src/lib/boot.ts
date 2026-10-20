@@ -1,9 +1,9 @@
 import { tick } from "@/lib/control";
 
 export function bootControlPlane() {
-  const state = globalThis as { __myspaceBoot?: boolean };
-  if (state.__myspaceBoot) return;
-  state.__myspaceBoot = true;
+  const state = globalThis as { __cremsBoot?: boolean };
+  if (state.__cremsBoot) return;
+  state.__cremsBoot = true;
 
   const run = () => {
     void tick().catch((error) => console.error("[scheduler]", error));

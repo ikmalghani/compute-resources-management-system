@@ -6,17 +6,16 @@ import { createWorkspace } from "../src/lib/control";
 async function main() {
   const administrators = await prisma.user.count({ where: { role: "ADMIN" } });
   if (administrators === 0) {
-    console.log("No administrator yet. Insert one in the database before signing in.");
+    console.log("No administrator yet. Open the app to create the first one.");
   }
 
   if ((await prisma.gpuDevice.count()) === 0) {
     const found = await detectNvidiaGpus();
-    for (const gpu of found) {
-      await prisma.gpuDevice.create({
-        data: { index: gpu.index, name: gpu.name, memoryMb: gpu.memoryMb, status: "FREE" },
-      });
-    }
-    console.log(found.length ? `Registered ${found.length} GPU(s) reported by nvidia-smi` : "No NVIDIA GPU detected");
+    console.log(
+      found.length
+        ? `Detected ${found.length} GPU(s). Add them from the GPU Scheduler.`
+        : "No NVIDIA GPU detected",
+    );
   }
 
   if (process.env.SEED_DEMO === "true" && (await prisma.workspace.count()) === 0) {

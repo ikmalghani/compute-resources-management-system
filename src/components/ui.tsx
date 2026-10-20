@@ -167,10 +167,13 @@ export function Modal({
   );
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="mb-4 block">
-      <span className="mb-1.5 block text-sm font-medium text-[#1f2430]">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-[#1f2430]">
+        {label}
+        {required ? <span className="ml-0.5 text-[#e11d48]">*</span> : null}
+      </span>
       {children}
     </label>
   );

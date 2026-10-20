@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LogoMark } from "@/components/icons";
+import { BrandLockup } from "@/components/icons";
 import { Banner, Field, PrimaryButton, inputClass } from "@/components/ui";
 import { api } from "@/lib/client";
 
@@ -39,13 +39,7 @@ export default function ChangePasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#c9cfd4] px-4 py-10">
       <div className="w-full max-w-md rounded-[28px] bg-white p-8 shadow-panel">
-        <div className="mb-6 flex items-center gap-3">
-          <LogoMark />
-          <div>
-            <p className="text-lg font-semibold text-[#17181c]">MYSPACE</p>
-            <p className="text-sm text-[#8b9098]">Set your password</p>
-          </div>
-        </div>
+        <BrandLockup subtitle="Set your password" />
         <h1 className="text-2xl font-semibold tracking-tight">Change your password</h1>
         <p className="mt-1 text-sm text-[#8b9098]">
           This account is using a temporary password. Choose a new one before opening the dashboard.

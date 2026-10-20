@@ -4,7 +4,7 @@ import { containerName, promptHost, volumeName } from "@/lib/prompt";
 
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
-export const WORKSPACE_IMAGE = "myspace-workspace:latest";
+export const WORKSPACE_IMAGE = process.env.WORKSPACE_IMAGE || "crems-workspace:latest";
 const WORKSPACE_CONTEXT = "/app/workspace";
 
 export type GpuAttachMode = "none" | "nvidia" | "simulated";
@@ -33,6 +33,7 @@ export type DetectedGpu = { index: number; name: string; memoryMb: number };
 export async function detectNvidiaGpus(): Promise<DetectedGpu[]> {
   let container: Docker.Container | undefined;
   try {
+    await ensureWorkspaceImage();
     container = await docker.createContainer({
       Image: WORKSPACE_IMAGE,
       Entrypoint: ["nvidia-smi"],
@@ -125,11 +126,11 @@ export async function provisionContainer(opts: {
     `WORKSPACE_PROMPT_HOST=${promptHost(opts.slug)}`,
     `WORKSPACE_CPU=${opts.cpu}`,
     `WORKSPACE_RAM_MB=${opts.memoryMb}`,
-    `MYSPACE_WORKSPACE_ID=${opts.workspaceId}`,
+    `CREMS_WORKSPACE_ID=${opts.workspaceId}`,
   ];
   if (opts.gpuIndex !== null && opts.gpuMode !== "none") {
-    env.push(`MYSPACE_GPU_INDEX=${opts.gpuIndex}`);
-    env.push(`MYSPACE_GPU_MODE=${opts.gpuMode}`);
+    env.push(`CREMS_GPU_INDEX=${opts.gpuIndex}`);
+    env.push(`CREMS_GPU_MODE=${opts.gpuMode}`);
   }
 
   const hostConfig: Docker.HostConfig = {
@@ -140,7 +141,7 @@ export async function provisionContainer(opts: {
     RestartPolicy: { Name: "unless-stopped" },
     Init: true,
     PidsLimit: 1024,
-    NetworkMode: "myspace_default",
+    NetworkMode: "crems_default",
     PortBindings: {
       "8080/tcp": [{ HostIp: "127.0.0.1", HostPort: "" }],
     },
@@ -162,9 +163,9 @@ export async function provisionContainer(opts: {
     Env: env,
     Hostname: promptHost(opts.slug).slice(0, 63),
     Labels: {
-      "myspace.managed": "true",
-      "myspace.slug": opts.slug,
-      "myspace.user": opts.username,
+      "crems.managed": "true",
+      "crems.slug": opts.slug,
+      "crems.user": opts.username,
     },
     ExposedPorts: { "8080/tcp": {} },
     HostConfig: hostConfig,
@@ -236,6 +237,17 @@ export async function inspectLimits(containerId: string) {
     running: Boolean(info.State.Running),
     cpu: (info.HostConfig.NanoCpus || 0) / 1e9,
     memoryMb: Math.round((info.HostConfig.Memory || 0) / (1024 * 1024)),
+  };
+}
+
+export async function inspectHost() {
+  const info = await docker.info();
+  return {
+    cpuCores: typeof info.NCPU === "number" ? info.NCPU : 0,
+    architecture: typeof info.Architecture === "string" ? info.Architecture : "",
+    ramBytes: typeof info.MemTotal === "number" ? info.MemTotal : 0,
+    hostname: typeof info.Name === "string" ? info.Name : "",
+    operatingSystem: typeof info.OperatingSystem === "string" ? info.OperatingSystem : "",
   };
 }
 
