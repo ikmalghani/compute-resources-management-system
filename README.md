@@ -14,7 +14,7 @@ Compose starts three services:
 
 - `db` is PostgreSQL 16. It stores accounts, workspaces, the GPU pool, and activity.
 - `workspace-image` builds `crems-workspace:latest` and exits. Every workspace container is created from that image.
-- `app` is the Next.js control plane. It mounts the host Docker socket so it can create and limit those containers.
+- `app` is the Next.js control plane, image `crems:latest`. It mounts the host Docker socket so it can create and limit those containers.
 
 The socket is root-equivalent on the host. Run this only where the administrators are trusted. Copy `.env.example` to `.env`, set `AUTH_SECRET` to a long random string, and change the database password before using it beyond one machine. Do not put an administrator password in `.env` or Compose.
 
@@ -26,7 +26,11 @@ Later accounts are created in the dashboard. CReMS generates their password, sho
 
 ## Publish and deploy
 
-The server does not need the source tree. Build and push from a machine that has this repository, then copy only `docker-compose.prod.yml` and `.env` to the host.
+The server does not need the source tree. Build on a machine that has this repository, then copy `docker-compose.prod.yml` and `.env` to the host. Move the images with a private registry, or with an image archive.
+
+Leave `CREMS_APP_IMAGE` and `CREMS_WORKSPACE_IMAGE` unset to build `crems:latest` and `crems-workspace:latest`. Set them when the tags should be something else.
+
+### Private registry
 
 On the build machine:
 
@@ -57,20 +61,14 @@ docker compose up -d
 
 Open the app and create the administrator in the browser.
 
-### Update images on the server
-
-Push a new build from the machine that has this repository. No git clone on the server.
-
-On the build machine:
+To update, push a new build from the machine that has this repository. No git clone on the server.
 
 ```bash
 docker compose build
 docker compose push
 ```
 
-That updates `youruser/crems:latest` and `youruser/crems-workspace:latest` on Docker Hub (the names in `.env`).
-
-On the server:
+That updates `youruser/crems:latest` and `youruser/crems-workspace:latest` on the registry (the names in `.env`). On the server:
 
 ```bash
 cd ~/crems
@@ -78,11 +76,44 @@ docker compose pull
 docker compose up -d
 ```
 
-Compose replaces `app` with the new image. Postgres data in `pgdata` is left alone. Accounts and workspaces in the database stay.
+If the registry repositories are private, run `docker login` on the server before `pull`. Recopy `docker-compose.yml` only if that file itself changed.
+
+### Image archive
+
+Build on this machine, then save both images into one file. `crems-images.tar` is gitignored.
+
+```bash
+docker compose build
+docker save crems:latest crems-workspace:latest -o crems-images.tar
+```
+
+Copy `crems-images.tar`, `docker-compose.prod.yml`, and `.env` to the server (disk, object storage, or `scp`).
+
+On the server, load the archive. `docker load` restores the tags `crems:latest` and `crems-workspace:latest`.
+
+```bash
+docker load -i crems-images.tar
+```
+
+In `~/crems/.env`, set those tags, plus `AUTH_SECRET` and a database password:
+
+```bash
+CREMS_APP_IMAGE=crems:latest
+CREMS_WORKSPACE_IMAGE=crems-workspace:latest
+```
+
+```bash
+cd ~/crems
+docker compose up -d
+```
+
+Skip `docker compose pull` for these two images. `up` uses the tags already loaded. `db` still pulls `postgres:16-alpine` from Docker Hub. To keep Postgres offline as well, save and load that image the same way.
+
+To update, save a new archive, `docker load` it on the server, and run `docker compose up -d` again.
+
+Either deploy replaces `app` with the new image. Postgres data in `pgdata` is left alone. Accounts and workspaces in the database stay.
 
 Workspace containers keep the old `crems-workspace` image until they are recreated. After a workspace-image change, start or stop that workspace in the UI (or delete and create it) so Docker creates it from the new image.
-
-If the Hub repositories are private, run `docker login` on the server first. Recopy `docker-compose.yml` only if that file itself changed.
 
 ## What people can do
 

@@ -22,7 +22,7 @@ services:
     restart: "no"
 
   app:
-    image: ${CREMS_APP_IMAGE:-crems:local}
+    image: ${CREMS_APP_IMAGE:-crems:latest}
     build: .
     ports:
       - "3000:3000"

@@ -2,5 +2,6 @@ node_modules
 .next
 .git
 *.log
+*.tar
 README.md
 scripts/smoke.mjs
