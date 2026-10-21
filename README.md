@@ -55,7 +55,34 @@ docker compose pull
 docker compose up -d
 ```
 
-Open the app and create the administrator in the browser. Later updates are `docker compose pull && docker compose up -d` on the server after you push new images.
+Open the app and create the administrator in the browser.
+
+### Update images on the server
+
+Push a new build from the machine that has this repository. No git clone on the server.
+
+On the build machine:
+
+```bash
+docker compose build
+docker compose push
+```
+
+That updates `youruser/crems:latest` and `youruser/crems-workspace:latest` on Docker Hub (the names in `.env`).
+
+On the server:
+
+```bash
+cd ~/crems
+docker compose pull
+docker compose up -d
+```
+
+Compose replaces `app` with the new image. Postgres data in `pgdata` is left alone. Accounts and workspaces in the database stay.
+
+Workspace containers keep the old `crems-workspace` image until they are recreated. After a workspace-image change, start or stop that workspace in the UI (or delete and create it) so Docker creates it from the new image.
+
+If the Hub repositories are private, run `docker login` on the server first. Recopy `docker-compose.yml` only if that file itself changed.
 
 ## What people can do
 
