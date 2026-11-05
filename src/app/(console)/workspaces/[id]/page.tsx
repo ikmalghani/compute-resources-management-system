@@ -163,7 +163,7 @@ export default function WorkspaceDetailPage() {
             <LaunchButton
               label="code-server"
               disabled={workspace.status !== "RUNNING" || !workspace.codePort}
-              onClick={() => openView(`http://127.0.0.1:${workspace.codePort}`)}
+              onClick={() => openView(`/view/code/${workspace.id}`)}
               icon={<CodeServerIcon />}
             />
             <LaunchButton

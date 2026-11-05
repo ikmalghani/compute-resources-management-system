@@ -100,6 +100,7 @@ if command -v code-server >/dev/null 2>&1 && [ -n "${CREMS_WORKSPACE_ID:-}" ]; t
     --auth none \
     --disable-telemetry \
     --disable-update-check \
+    --base-path "/view/code/${CREMS_WORKSPACE_ID}" \
     "/home/${USER_NAME}" >/tmp/code-server.log 2>&1 &
 fi
 

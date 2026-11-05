@@ -5,4 +5,7 @@ npx prisma migrate deploy
 # echo "Seeding accounts and GPU pool..."
 # npx tsx scripts/seed.ts
 echo "Starting CReMS control plane..."
-exec npx next start -H 0.0.0.0 -p 3000
+export HOSTNAME=0.0.0.0
+export PORT=3000
+export NODE_ENV=production
+exec node server.mjs
